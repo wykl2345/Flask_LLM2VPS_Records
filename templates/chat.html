@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with OpenAI</title>
+    <style>
+        #chat-box {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat with OpenAI</h1>
+    <div id="chat-box">{{ content | safe }}</div>
+    <form method="post" onsubmit="sendMessage(event)">
+        <input type="text" id="user_input" name="user_input" placeholder="Enter your message here">
+        <input type="submit" value="Send">
+    </form>
+
+    <script>
+        async function sendMessage(event) {
+            event.preventDefault();
+            const userInput = document.getElementById('user_input').value;
+            document.getElementById('user_input').value = '';
+
+            const chatBox = document.getElementById('chat-box');
+            const userMessage = document.createElement('div');
+            userMessage.textContent = `You: ${userInput}`;
+            chatBox.appendChild(userMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `user_input=${encodeURIComponent(userInput)}`
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                while (buffer.includes('\n')) {
+                    const line = buffer.split('\n')[0];
+                    buffer = buffer.substring(line.length + 1);
+                    const aiMessage = document.createElement('div');
+                    aiMessage.textContent = `AI: ${line}`;
+                    chatBox.appendChild(aiMessage);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
